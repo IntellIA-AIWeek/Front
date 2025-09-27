@@ -1,38 +1,30 @@
-// src/services/hfService.js
-const HF_TOKEN = ""; // guarda tu token en .env.local
+// Este servicio se encarga de llamar al backend para obtener las top 3 probabilidades
 
-const HF_API = "https://api-inference.huggingface.co/models";
+const API_URL = "http://localhost:8000"; // cambia si el backend está desplegado en otro lado
 
-export async function extractSymptoms(description) {
-  const response = await fetch(`${HF_API}/mihalca/SymptoAI`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${HF_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ inputs: description }),
-  });
+/**
+ * Envía los síntomas al backend y obtiene las top 3 predicciones de enfermedad
+ * @param {string[]} symptoms - Lista de síntomas seleccionados
+ * @returns {Promise<Object>} - Respuesta JSON del backend con top_predictions
+ */
+export async function getTopProbabilities(symptoms) {
+  try {
+    const response = await fetch(`${API_URL}/predict-probabilities`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ symptoms }),
+    });
 
-  if (!response.ok) {
-    throw new Error("Error al llamar a SymptoAI");
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data; // { top_predictions: [...] }
+  } catch (error) {
+    console.error("❌ Error en getTopProbabilities:", error);
+    return null;
   }
-
-  return response.json(); // síntomas estructurados
-}
-
-export async function predictDiseases(vectorizedSymptoms) {
-  const response = await fetch(`${HF_API}/isharane/disease-prediction`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${HF_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ inputs: vectorizedSymptoms }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Error al llamar a Disease Prediction");
-  }
-
-  return response.json(); // probabilidades de enfermedades
 }

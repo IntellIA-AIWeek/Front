@@ -1,5 +1,10 @@
 // src/mock/mockAgent.js
 
+/**
+ * Simula las respuestas del agente de IA médica.
+ * NOTA: aquí NO se llama al backend, solo se simula la conversación y se devuelven síntomas.
+ */
+
 export const simulateAgentResponse = async (userMessage, step) => {
   // Paso 1: Consentimiento
   if (step === "consent") {
@@ -20,7 +25,7 @@ export const simulateAgentResponse = async (userMessage, step) => {
     }
   }
 
-  // Paso 2: Anamnesis (simulación simplificada)
+  // Paso 2: Anamnesis (simulada)
   if (step === "anamnesis") {
     return {
       sender: "Dr. Amelia Chen",
@@ -39,9 +44,9 @@ export const simulateAgentResponse = async (userMessage, step) => {
     };
   }
 
-  // Paso 3 & 4: Simulación de modelos
+  // Paso 3: Simulación de IA → Devuelve structuredData con síntomas
   if (step === "ready-for-model") {
-    // Simulamos salida de SymptoAI y clasificador
+    // ✅ Simulación de lo que devolvería el agente IA con toda la historia clínica y síntomas ya procesados
     const mockStructuredData = {
       motivo_consulta: "dolor en el pecho",
       enfermedad_actual: {
@@ -52,19 +57,13 @@ export const simulateAgentResponse = async (userMessage, step) => {
       antecedentes_personales: ["hipertensión"],
       antecedentes_familiares: ["infarto en padre"],
       habitos: { tabaquismo: "no", alcohol: "no" },
-      sintomas_asociados: ["mareo"],
+      sintomas_asociados: ['muscle_pain', 'irritability',],
+      sintomas_vector: [ ],
     };
-
-    const mockPrediction = [
-      { disease: "Infarto agudo de miocardio", probability: 0.72 },
-      { disease: "Angina de pecho", probability: 0.18 },
-      { disease: "Ansiedad", probability: 0.10 },
-    ];
 
     return {
       structuredData: mockStructuredData,
-      prediction: mockPrediction,
-      nextStep: "report",
+      nextStep: "report", // 👈 Aquí Chat.jsx ya sabe que debe generar el reporte
     };
   }
 

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Container,
   Row,
@@ -11,12 +11,39 @@ import {
 } from "react-bootstrap";
 import "./Report.css";
 
-const Report = () => {
-  const conditions = [
-    { icon: "❤️", label: "Condición Cardiovascular", probability: 65 },
-    { icon: "🫁", label: "Condición Respiratoria", probability: 45 },
-    { icon: "🧠", label: "Condición Neurológica", probability: 30 },
-  ];
+const API_URL = "http://localhost:8000"; // Ajusta esto a tu backend real
+
+const Report = ({ structuredData }) => {
+  const [conditions, setConditions] = useState([]);
+
+  useEffect(() => {
+    const fetchProbabilities = async () => {
+  if (!structuredData) return;
+
+  try {
+    const res = await fetch(`${API_URL}/predict-probabilities`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symptoms: structuredData.sintomas_asociados }),
+    });
+
+    const data = await res.json();
+
+    const mapped = data.top_predictions.map((item) => ({
+      icon: "💊",
+      label: item.disease,
+      probability: Math.round(item.probability * 100),
+    }));
+
+    setConditions(mapped);
+  } catch (error) {
+    console.error("Error obteniendo probabilidades:", error);
+  }
+};
+
+
+    fetchProbabilities();
+  }, [structuredData]);
 
   return (
     <div className="bg-light min-vh-100 d-flex flex-column">
@@ -69,23 +96,30 @@ const Report = () => {
             <h3 className="h5 fw-bold text-center mb-4">
               Probabilidades de Condiciones
             </h3>
+
             <Row className="g-4">
-              {conditions.map((c, idx) => (
-                <Col key={idx} xs={12} md={4}>
-                  <Card className="text-center p-4 h-100 border-0 bg-light rounded-4">
-                    <div className="fs-1 mb-2">{c.icon}</div>
-                    <Card.Text className="fw-semibold">{c.label}</Card.Text>
-                    <h3 className="fw-bold text-primary display-6 my-3">
-                      {c.probability}%
-                    </h3>
-                    <ProgressBar
-                      now={c.probability}
-                      variant="primary"
-                      style={{ height: "6px" }}
-                    />
-                  </Card>
-                </Col>
-              ))}
+              {conditions.length > 0 ? (
+                conditions.map((c, idx) => (
+                  <Col key={idx} xs={12} md={4}>
+                    <Card className="text-center p-4 h-100 border-0 bg-light rounded-4">
+                      <div className="fs-1 mb-2">{c.icon}</div>
+                      <Card.Text className="fw-semibold">{c.label}</Card.Text>
+                      <h3 className="fw-bold text-primary display-6 my-3">
+                        {c.probability}%
+                      </h3>
+                      <ProgressBar
+                        now={c.probability}
+                        variant="primary"
+                        style={{ height: "6px" }}
+                      />
+                    </Card>
+                  </Col>
+                ))
+              ) : (
+                <p className="text-center text-muted">
+                  Calculando probabilidades...
+                </p>
+              )}
             </Row>
 
             {/* Mapa */}

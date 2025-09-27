@@ -17,44 +17,50 @@ const Chat = ({ onFinish }) => {
   const [isSending, setIsSending] = useState(false);
   const messagesRef = useRef(null);
 
+  // ✅ Autoscroll cuando llegan nuevos mensajes
   useEffect(() => {
     if (messagesRef.current) {
       messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
     }
   }, [messages]);
 
+  // ✅ Envía mensaje y simula respuesta del agente
   const handleSend = async () => {
     const text = input.trim();
     if (!text || isSending) return;
 
-    const userMsg = {
-      id: Date.now() + Math.random(),
-      sender: "You",
-      type: "user",
-      text,
-    };
-
+    // Agregar mensaje del usuario
+    const userMsg = { id: Date.now(), sender: "You", type: "user", text };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsSending(true);
 
     try {
       const response = await simulateAgentResponse(text, step);
-      if (response) {
-        const botMsg = {
-          id: Date.now() + Math.random(),
-          sender: "Dr. Amelia Chen",
-          type: "bot",
-          text: response.text,
-        };
-        setMessages((prev) => [...prev, botMsg]);
 
+      if (response) {
+        // Mensaje del agente
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            sender: "Dr. Amelia Chen",
+            type: "bot",
+            text: response.text,
+          },
+        ]);
+
+        // Avanzar al siguiente paso
         if (response.nextStep) setStep(response.nextStep);
-        if (response.nextStep === "report" && onFinish) {
-          onFinish({
-            structuredData: response.structuredData,
-            prediction: response.prediction,
-          });
+
+        // 👇 Si llegamos a la etapa "report", avisamos al padre para que muestre el Report.jsx
+        if (response.nextStep === "report") {
+          if (onFinish) {
+            onFinish({
+              structuredData: response.structuredData, // vector de síntomas mockeado
+              prediction: null, // ya no lo calculamos aquí
+            });
+          }
         }
       }
     } catch (err) {
@@ -66,8 +72,7 @@ const Chat = ({ onFinish }) => {
 
   return (
     <div className="d-flex flex-column bg-light min-vh-100">
-
-      {/* ✅ TOP BAR estilo navbar */}
+      {/* ✅ Navbar superior */}
       <nav className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom bg-white shadow-sm">
         <div className="d-flex align-items-center">
           <img
@@ -77,14 +82,12 @@ const Chat = ({ onFinish }) => {
           />
           <span className="fw-bold fs-5">HealthAI</span>
         </div>
-        <div>
-          <img
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTpScVCu6kdJmsUZ0rQSWM6I4ZpLgWfgIj3X5PaMUfD2yGjgSK4tGOCYEdNc5-7XgLw4_pAARSc9xdKLCJwaN8IO7qjMmgNGR_nTNY2Uk8hJLOMqHb8UVNz6I14HTmy9tIFT9YbI4AHmCD4aMQ4qur8ePpDGaWiiPSFt_0xHPV1QnDb_NyBhsGFONEE7z67viaF3k3hUF73zpntXAj0iR0c4t7cmVIFaH0XqxsirhzA21cMJWH59LlzkMy5YC9l537laxj6MLa7g"
-            alt="Profile"
-            className="rounded-circle"
-            style={{ width: 36, height: 36 }}
-          />
-        </div>
+        <img
+          src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTpScVCu6kdJmsUZ0rQSWM6I4ZpLgWfgIj3X5PaMUfD2yGjgSK4tGOCYEdNc5-7XgLw4_pAARSc9xdKLCJwaN8IO7qjMmgNGR_nTNY2Uk8hJLOMqHb8UVNz6I14HTmy9tIFT9YbI4AHmCD4aMQ4qur8ePpDGaWiiPSFt_0xHPV1QnDb_NyBhsGFONEE7z67viaF3k3hUF73zpntXAj0iR0c4t7cmVIFaH0XqxsirhzA21cMJWH59LlzkMy5YC9l537laxj6MLa7g"
+          alt="Profile"
+          className="rounded-circle"
+          style={{ width: 36, height: 36 }}
+        />
       </nav>
 
       {/* Header del chat */}
@@ -93,7 +96,7 @@ const Chat = ({ onFinish }) => {
         <p className="text-muted mb-0">Your AI Medical Assistant</p>
       </header>
 
-      {/* ✅ BOX SOLO PARA LOS MENSAJES */}
+      {/* ✅ Contenedor scrolleable para los mensajes */}
       <main
         className="flex-grow-1 mx-auto my-3 p-3 bg-white rounded-4 shadow-sm overflow-auto"
         style={{ width: "100%", maxWidth: "800px", height: "400px" }}
