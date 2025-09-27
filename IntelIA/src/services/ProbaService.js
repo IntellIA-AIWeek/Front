@@ -1,6 +1,6 @@
 // Este servicio se encarga de llamar al backend para obtener las top 3 probabilidades
 
-const API_URL = "http://localhost:8000"; // cambia si el backend está desplegado en otro lado
+const API_URL = "https://small-apples-happen.loca.lt"; // cambia si el backend está desplegado en otro lado
 
 /**
  * Envía los síntomas al backend y obtiene las top 3 predicciones de enfermedad
