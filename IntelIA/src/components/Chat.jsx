@@ -7,9 +7,10 @@ const Chat = ({ onFinish }) => {
   const [messages, setMessages] = useState([
     {
       id: 1,
-      sender: "Dr. Amelia Chen",
+      sender: "Dra. IntelIA",
       type: "bot",
-      text: "Hello, I'm Dr. Chen. How can I assist you today?",
+      text: "¡Hola! Soy la Dra. IntelIA, tu asistente médica virtual. Antes de comenzar, ¿aceptas el consentimiento informado para continuar?",
+      step: "consent",
     },
   ]);
   const [input, setInput] = useState("");
@@ -24,13 +25,12 @@ const Chat = ({ onFinish }) => {
     }
   }, [messages]);
 
-  // ✅ Envía mensaje y simula respuesta del agente
-  const handleSend = async () => {
-    const text = input.trim();
+  // ✅ Manejar envío de mensaje manual (cuando no es consentimiento)
+  const handleSend = async (customText = null) => {
+    const text = customText || input.trim();
     if (!text || isSending) return;
 
-    // Agregar mensaje del usuario
-    const userMsg = { id: Date.now(), sender: "You", type: "user", text };
+    const userMsg = { id: Date.now(), sender: "Tú", type: "user", text };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsSending(true);
@@ -39,34 +39,53 @@ const Chat = ({ onFinish }) => {
       const response = await simulateAgentResponse(text, step);
 
       if (response) {
-        // Mensaje del agente
         setMessages((prev) => [
           ...prev,
           {
             id: Date.now(),
-            sender: "Dr. Amelia Chen",
+            sender: "Dra. IntelIA",
             type: "bot",
             text: response.text,
           },
         ]);
 
-        // Avanzar al siguiente paso
         if (response.nextStep) setStep(response.nextStep);
 
-        // 👇 Si llegamos a la etapa "report", avisamos al padre para que muestre el Report.jsx
-        if (response.nextStep === "report") {
-          if (onFinish) {
-            onFinish({
-              structuredData: response.structuredData, // vector de síntomas mockeado
-              prediction: null, // ya no lo calculamos aquí
-            });
-          }
+        if (response.nextStep === "report" && onFinish) {
+          onFinish({
+            structuredData: response.structuredData,
+            prediction: null,
+          });
         }
       }
     } catch (err) {
       console.error(err);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  // ✅ Manejo específico para consentimiento
+  const handleConsent = (accepted) => {
+    if (accepted) {
+      handleSend("Acepto");
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          sender: "Tú",
+          type: "user",
+          text: "No acepto",
+        },
+        {
+          id: Date.now() + 1,
+          sender: "Dra. IntelIA",
+          type: "bot",
+          text: "Entiendo. No podemos continuar sin tu consentimiento. Gracias por tu tiempo.",
+        },
+      ]);
+      setStep("finished");
     }
   };
 
@@ -80,11 +99,11 @@ const Chat = ({ onFinish }) => {
             alt="Logo"
             style={{ width: 32, height: 32, marginRight: 10 }}
           />
-          <span className="fw-bold fs-5">HealthAI</span>
+          <span className="fw-bold fs-5">IntelIA</span>
         </div>
         <img
           src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTpScVCu6kdJmsUZ0rQSWM6I4ZpLgWfgIj3X5PaMUfD2yGjgSK4tGOCYEdNc5-7XgLw4_pAARSc9xdKLCJwaN8IO7qjMmgNGR_nTNY2Uk8hJLOMqHb8UVNz6I14HTmy9tIFT9YbI4AHmCD4aMQ4qur8ePpDGaWiiPSFt_0xHPV1QnDb_NyBhsGFONEE7z67viaF3k3hUF73zpntXAj0iR0c4t7cmVIFaH0XqxsirhzA21cMJWH59LlzkMy5YC9l537laxj6MLa7g"
-          alt="Profile"
+          alt="Perfil"
           className="rounded-circle"
           style={{ width: 36, height: 36 }}
         />
@@ -92,8 +111,8 @@ const Chat = ({ onFinish }) => {
 
       {/* Header del chat */}
       <header className="text-center py-3 bg-white border-bottom">
-        <h1 className="fw-bold fs-4 mb-1">Dr. Amelia Chen</h1>
-        <p className="text-muted mb-0">Your AI Medical Assistant</p>
+        <h1 className="fw-bold fs-4 mb-1">Dra. IntelIA</h1>
+        <p className="text-muted mb-0">Asistente médica virtual</p>
       </header>
 
       {/* ✅ Contenedor scrolleable para los mensajes */}
@@ -113,7 +132,7 @@ const Chat = ({ onFinish }) => {
             >
               {!isUser && (
                 <img
-                  alt="Bot avatar"
+                  alt="Avatar bot"
                   className="avatar me-2 rounded-circle"
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTpScVCu6kdJmsUZ0rQSWM6I4ZpLgWfgIj3X5PaMUfD2yGjgSK4tGOCYEdNc5-7XgLw4_pAARSc9xdKLCJwaN8IO7qjMmgNGR_nTNY2Uk8hJLOMqHb8UVNz6I14HTmy9tIFT9YbI4AHmCD4aMQ4qur8ePpDGaWiiPSFt_0xHPV1QnDb_NyBhsGFONEE7z67viaF3k3hUF73zpntXAj0iR0c4t7cmVIFaH0XqxsirhzA21cMJWH59LlzkMy5YC9l537laxj6MLa7g"
                   style={{ width: 40, height: 40 }}
@@ -134,7 +153,7 @@ const Chat = ({ onFinish }) => {
               </div>
               {isUser && (
                 <img
-                  alt="User avatar"
+                  alt="Avatar usuario"
                   className="avatar ms-2 rounded-circle"
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnIxjLtC2JyU-hCPswlU9PPi7uxc0Xn_xa2kjUUeQN_q6UjxVpZB3_WvPgBTfUDZKUDzb091XkCHSSEjKO2hqSZ42g6TGPLWUMqVmbZ21E1fNV2Qd1z_VP8HpCB-tgTkBXo2Jkjw5uQP-BPAWXv0d18Fp7ogwwxxQTaYtfMfJu9UrUc2f9UBxVnl_JYIjv7ouhxQpIZLOisQbvRW2N4oDFFMMB-rUjIVDYVRVjomA6OvzmkAZ7wkffdhv5s77E-dYtz2hDmxohBA"
                   style={{ width: 40, height: 40 }}
@@ -143,32 +162,52 @@ const Chat = ({ onFinish }) => {
             </div>
           );
         })}
+
+        {/* ✅ Botones de consentimiento al inicio */}
+        {step === "consent" && (
+          <div className="d-flex justify-content-center gap-3 mt-3">
+            <button
+              className="btn btn-success px-4"
+              onClick={() => handleConsent(true)}
+            >
+              ✅ Acepto
+            </button>
+            <button
+              className="btn btn-danger px-4"
+              onClick={() => handleConsent(false)}
+            >
+              ❌ No acepto
+            </button>
+          </div>
+        )}
       </main>
 
       {/* Footer con input */}
-      <footer className="border-top py-3 bg-white">
-        <div className="mx-auto w-100 px-3" style={{ maxWidth: "800px" }}>
-          <div className="d-flex align-items-center bg-light rounded-pill px-3 py-2 shadow-sm">
-            <input
-              type="text"
-              className="form-control border-0 bg-transparent"
-              placeholder="Type your message..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              style={{ boxShadow: "none" }}
-            />
-            <button
-              className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center ms-2"
-              style={{ width: 40, height: 40 }}
-              onClick={handleSend}
-              disabled={isSending || !input.trim()}
-            >
-              <FaPaperPlane size={16} />
-            </button>
+      {step !== "consent" && step !== "finished" && (
+        <footer className="border-top py-3 bg-white">
+          <div className="mx-auto w-100 px-3" style={{ maxWidth: "800px" }}>
+            <div className="d-flex align-items-center bg-light rounded-pill px-3 py-2 shadow-sm">
+              <input
+                type="text"
+                className="form-control border-0 bg-transparent"
+                placeholder="Escribe tu mensaje..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                style={{ boxShadow: "none" }}
+              />
+              <button
+                className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center ms-2"
+                style={{ width: 40, height: 40 }}
+                onClick={() => handleSend()}
+                disabled={isSending || !input.trim()}
+              >
+                <FaPaperPlane size={16} />
+              </button>
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 };

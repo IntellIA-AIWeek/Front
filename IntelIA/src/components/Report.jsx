@@ -7,69 +7,61 @@ import {
   ProgressBar,
   Button,
   Navbar,
-  Nav,
   Spinner,
 } from "react-bootstrap";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import "./Report.css";
 
-const API_URL = "http://localhost:8000"; // Ajusta esto a tu backend real
+const API_URL = "http://localhost:8000";
 
 const Report = ({ structuredData }) => {
   const [conditions, setConditions] = useState([]);
   const [diagnosisText, setDiagnosisText] = useState("");
   const [loadingDiagnosis, setLoadingDiagnosis] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
 
-  // 🧠 1️⃣ Fetch probabilidades
+  // 🧠 Fetch probabilidades
   useEffect(() => {
+    if (!structuredData) return;
     const fetchProbabilities = async () => {
-      if (!structuredData) return;
-
       try {
         const res = await fetch(`${API_URL}/predict-probabilities`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ symptoms: structuredData.sintomas_asociados }),
         });
-
         const data = await res.json();
-
         const mapped = data.top_predictions.map((item) => ({
           icon: "💊",
           label: item.disease,
           probability: Math.round(item.probability * 100),
         }));
-
         setConditions(mapped);
       } catch (error) {
         console.error("Error obteniendo probabilidades:", error);
       }
     };
-
     fetchProbabilities();
   }, [structuredData]);
 
-  // 🧠 2️⃣ Fetch diagnóstico generado por HuggingFace
+  // 🧠 Fetch diagnóstico
   useEffect(() => {
+    if (!structuredData || !structuredData.sintomas_asociados?.length) return;
+    setLoadingDiagnosis(true);
+    setDiagnosisText("");
     const fetchDiagnosis = async () => {
-      if (!structuredData || !structuredData.sintomas_asociados?.length) return;
-
-      setLoadingDiagnosis(true);
-      setDiagnosisText("");
-
       try {
-        // Construir prompt automáticamente
-        const prompt = `The patient reports the following symptoms: ${structuredData.sintomas_asociados.join(
+        const prompt = `El paciente presenta los siguientes síntomas: ${structuredData.sintomas_asociados.join(
           ", "
-        )}. Provide a brief possible diagnosis and reasoning.`;
-
+        )}. Por favor genera un posible diagnóstico y razonamiento breve.`;
         const res = await fetch(`${API_URL}/generate-diagnosis`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt }),
         });
-
         const data = await res.json();
-        setDiagnosisText(data.diagnosis_text || "No diagnosis generated.");
+        setDiagnosisText(data.diagnosis_text || "No se generó diagnóstico.");
       } catch (error) {
         console.error("Error generando diagnóstico:", error);
         setDiagnosisText("Ocurrió un error generando el diagnóstico.");
@@ -77,38 +69,80 @@ const Report = ({ structuredData }) => {
         setLoadingDiagnosis(false);
       }
     };
-
     fetchDiagnosis();
   }, [structuredData]);
+
+  // 🌍 Obtener ubicación del usuario
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      (err) => console.warn("No se pudo obtener ubicación:", err),
+      { enableHighAccuracy: true }
+    );
+  }, []);
+
+  // 📄 Generar PDF
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("Reporte Médico Asistido por IA", 14, 20);
+    doc.setFontSize(12);
+    doc.text(
+      "Este reporte contiene una estimación automática generada por modelos de IA. No sustituye una valoración médica real.",
+      14,
+      30,
+      { maxWidth: 180 }
+    );
+    doc.text("📝 Síntomas Reportados:", 14, 45);
+    doc.text(structuredData?.sintomas_asociados?.join(", ") || "-", 14, 52, {
+      maxWidth: 180,
+    });
+    if (conditions.length > 0) {
+      const tableData = conditions.map((c) => [c.label, `${c.probability}%`]);
+      autoTable(doc, {
+        head: [["Condición", "Probabilidad"]],
+        body: tableData,
+        startY: 65,
+      });
+    }
+    doc.text(
+      "🤖 Análisis Generativo:",
+      14,
+      (doc.lastAutoTable?.finalY || 65) + 15
+    );
+    doc.text(
+      diagnosisText || "No disponible",
+      14,
+      (doc.lastAutoTable?.finalY || 65) + 22,
+      { maxWidth: 180 }
+    );
+    doc.save("Reporte-IA.pdf");
+  };
 
   return (
     <div className="bg-light min-vh-100 d-flex flex-column">
       {/* ===== HEADER ===== */}
-      <Navbar bg="white" expand="md" fixed="top" className="shadow-sm">
-        <Container fluid className="px-4">
-          <Navbar.Brand className="d-flex align-items-center gap-2 fw-bold">
-            <span className="text-primary fs-4">💡</span>
-            HealthAI
-          </Navbar.Brand>
-          <Navbar.Toggle aria-controls="main-nav" />
-          <Navbar.Collapse id="main-nav" className="justify-content-end">
-            <Nav className="gap-3">
-              <Nav.Link href="#">Inicio</Nav.Link>
-              <Nav.Link href="#">Servicios</Nav.Link>
-              <Nav.Link href="#">Contacto</Nav.Link>
-            </Nav>
-            <Button variant="link" className="p-2 text-secondary">
-              <span className="material-symbols-outlined">notifications</span>
-            </Button>
-            <img
-              src="https://randomuser.me/api/portraits/women/44.jpg"
-              alt="avatar"
-              className="rounded-circle ms-3"
-              width="40"
-              height="40"
-            />
-          </Navbar.Collapse>
-        </Container>
+      <Navbar bg="white" expand="md" fixed="top" className="shadow-sm px-4">
+        <div className="d-flex align-items-center">
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/2950/2950670.png"
+            alt="Logo"
+            style={{ width: 32, height: 32, marginRight: 10 }}
+          />
+          <span className="fw-bold fs-5">IntelIA</span>
+        </div>
+        <img
+          src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTpScVCu6kdJmsUZ0rQSWM6I4ZpLgWfgIj3X5PaMUfD2yGjgSK4tGOCYEdNc5-7XgLw4_pAARSc9xdKLCJwaN8IO7qjMmgNGR_nTNY2Uk8hJLOMqHb8UVNz6I14HTmy9tIFT9YbI4AHmCD4aMQ4qur8ePpDGaWiiPSFt_0xHPV1QnDb_NyBhsGFONEE7z67viaF3k3hUF73zpntXAj0iR0c4t7cmVIFaH0XqxsirhzA21cMJWH59LlzkMy5YC9l537laxj6MLa7g"
+          alt="Perfil"
+          className="rounded-circle ms-auto"
+          style={{ width: 36, height: 36 }}
+        />
       </Navbar>
 
       {/* ===== MAIN ===== */}
@@ -120,19 +154,23 @@ const Report = ({ structuredData }) => {
           >
             {/* Título */}
             <div className="text-center mb-4">
-              <h2 className="fw-bold display-6">
-                Análisis de Salud Asistido por IA
-              </h2>
+              <h2 className="fw-bold display-6">Reporte Asistido por IA</h2>
               <p className="text-muted lead">
-                Resultados del modelo predictivo basado en tus síntomas.
+                Resultados generados a partir de tus síntomas reportados.
               </p>
+            </div>
+
+            {/* Consentimiento / Reflexión */}
+            <div className="alert alert-info rounded-4">
+              <strong>ℹ️ Importante:</strong> Las estimaciones y análisis han sido generados por un modelo de IA.
+              <br />
+              Este sistema no sustituye la valoración ni el diagnóstico de un profesional médico. Usa esta información como guía inicial.
             </div>
 
             {/* Condiciones */}
             <h3 className="h5 fw-bold text-center mb-4">
               Probabilidades de Condiciones
             </h3>
-
             <Row className="g-4">
               {conditions.length > 0 ? (
                 conditions.map((c, idx) => (
@@ -152,13 +190,11 @@ const Report = ({ structuredData }) => {
                   </Col>
                 ))
               ) : (
-                <p className="text-center text-muted">
-                  Calculando probabilidades...
-                </p>
+                <p className="text-center text-muted">Calculando probabilidades...</p>
               )}
             </Row>
 
-            {/* 📌 Diagnóstico generado */}
+            {/* Diagnóstico */}
             <div className="mt-5">
               <h3 className="h5 fw-bold text-center mb-3">
                 Análisis del Modelo Generativo
@@ -166,8 +202,7 @@ const Report = ({ structuredData }) => {
               <Card className="p-3 bg-light rounded-4 shadow-sm border-0">
                 {loadingDiagnosis ? (
                   <div className="text-center py-3">
-                    <Spinner animation="border" size="sm" /> Generando
-                    diagnóstico...
+                    <Spinner animation="border" size="sm" /> Generando diagnóstico...
                   </div>
                 ) : (
                   <p className="mb-0 text-secondary" style={{ whiteSpace: "pre-wrap" }}>
@@ -177,35 +212,36 @@ const Report = ({ structuredData }) => {
               </Card>
             </div>
 
-            {/* Mapa */}
-            <div className="mt-5">
-              <h3 className="h5 fw-bold text-center mb-3">
-                Centros de Atención Cercanos
-              </h3>
-              <div className="ratio ratio-16x9 rounded-4 overflow-hidden shadow-sm bg-secondary">
-                <img
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBHzBzAhQZN1LN7Cnn8ztl0K9893Ie1NVX_cpYT3EYW8Q-YK6S2vQeq7KDjYxMdmBOLIr_TYZjYb17LbZG7yyFmCS3tUP22yOvDr_WTmHuBUIjXOB60kQxP-oGRsN692sQPTcswUT-XPjiRO3dDeTW5CQuBqWCmml2IBHulQkz85akEq92dw7gBGDioZX967_ArVRhG-notMHXBRzw23lqpQprOgJHELqKcQ6rea-anK2W5DTwdN31-TYSlSUN8oMCjmv9kfOu12A"
-                  alt="Mapa centros médicos"
-                  className="w-100 h-100 object-fit-cover"
-                />
+            {/* Mapa de centros de salud */}
+            {userLocation && (
+              <div className="mt-5">
+                <h3 className="h5 fw-bold text-center mb-3">
+                  Centros de Salud Cercanos
+                </h3>
+                <div className="ratio ratio-16x9 rounded-4 overflow-hidden shadow-sm">
+                  <iframe
+                    title="Mapa Centros de Salud"
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                    allowFullScreen
+                    src={`https://www.google.com/maps/embed/v1/search?key=AIzaSyCre4oooBr4zFYj6p-p7XyMfJEnnAWOcM8&q=hospital&center=${userLocation.lat},${userLocation.lng}&zoom=13`}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Aviso */}
-            <p className="text-center text-muted fst-italic small mt-4">
-              Este resultado es solo una estimación y no reemplaza la valoración
-              médica profesional.
-            </p>
-
-            {/* Botón */}
-            <div className="text-center mt-4">
+            {/* Compartir */}
+            <div className="text-center mt-5">
               <Button
                 variant="primary"
                 size="lg"
                 className="d-inline-flex align-items-center gap-2"
+                onClick={handleDownloadPDF}
               >
-                <span className="material-symbols-outlined">share</span>
-                Compartir Reporte
+              
+                Descargar Reporte en PDF
               </Button>
             </div>
           </Card>
@@ -216,7 +252,7 @@ const Report = ({ structuredData }) => {
       <footer className="bg-white py-3 mt-auto text-center border-top">
         <Container>
           <p className="mb-0 text-muted small">
-            © 2024 HealthAI. Todos los derechos reservados.
+            © 2025 IntelIA. Todos los derechos reservados.
           </p>
         </Container>
       </footer>

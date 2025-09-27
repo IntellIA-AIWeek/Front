@@ -65,3 +65,48 @@ html, body, #root {
     opacity: 1;
   }
 }
+
+/* ✨ Transiciones suaves para los mensajes */
+.message-wrapper {
+  display: flex;
+  margin-bottom: 12px;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: slideFadeIn 0.35s ease forwards;
+}
+
+@keyframes slideFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 🫧 Pequeña "expansión" de la burbuja cuando aparece */
+.bubble {
+  transition: background-color 0.25s ease, transform 0.2s ease;
+}
+
+.bubble.bot {
+  animation: popIn 0.3s ease both;
+}
+
+.bubble.user {
+  animation: popIn 0.3s ease both;
+}
+
+@keyframes popIn {
+  0% {
+    transform: scale(0.95);
+  }
+  80% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
