@@ -1,20 +1,37 @@
-import numpy as np
-import joblib
-from huggingface_hub import hf_hub_download
-from fastapi import FastAPI
+from openai import AzureOpenAI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware
+import numpy as np
+import joblib
+from huggingface_hub import hf_hub_download
 from transformers import pipeline
 
-# Cargar el pipeline una sola vez (para que no se demore en cada request)
+# Cargar el pipeline de HuggingFace
 diagnosis_pipe = pipeline(
     "text-generation", 
     model="alpha-ai/Medical-Diagnosis-COT-Gemma3-270M"
 )
 
+# Cargar el modelo de predicción de enfermedades
+model = joblib.load(
+    hf_hub_download("AWeirdDev/human-disease-prediction", "sklearn_model.joblib")
+)
 
-# Lista de síntomas en orden exacto
+# Configuración de Azure OpenAI
+endpoint = "https://invuniandesai-2.openai.azure.com/"
+model_name = "gpt-4o-mini"
+deployment = "gpt"
+api_key = ""  # Reemplaza con tu clave de API
+
+client = AzureOpenAI(
+    api_key=api_key,
+    azure_endpoint=endpoint,
+    api_version="2024-12-01-preview"
+)
+
+# Lista de síntomas
 SYMPTOM_ORDER = ['itching',
  'skin_rash',
  'nodal_skin_eruptions',
@@ -148,12 +165,6 @@ SYMPTOM_ORDER = ['itching',
  'red_sore_around_nose',
  'yellow_crust_ooze']
 
-
-# Cargar el modelo
-model = joblib.load(
-    hf_hub_download("AWeirdDev/human-disease-prediction", "sklearn_model.joblib")
-)
-
 # FastAPI para servir al frontend
 app = FastAPI()
 
@@ -161,43 +172,57 @@ origins = [
     "http://localhost:3000",   # React local
     "http://127.0.0.1:3000",
     "http://localhost:5173",   # Vite local (si usas)
+    "http://localhost:5174",   # Nuevo puerto que mencionaste
 ]
 
-# ✅ Agrega el middleware de CORS
+# Agregar el middleware de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,          # dominios permitidos
+    allow_origins=origins,          # Permitir solicitudes desde estos orígenes
     allow_credentials=True,
-    allow_methods=["*"],            # permite GET, POST, OPTIONS, etc.
-    allow_headers=["*"],            # permite todos los headers
+    allow_methods=["*"],            # Permitir todos los métodos (GET, POST, etc.)
+    allow_headers=["*"],            # Permitir todos los headers
 )
 
+
+# Definir las clases de solicitud
 class SymptomRequest(BaseModel):
     symptoms: List[str]
 
-class DiagnosisRequest(BaseModel):
-    prompt: str
- 
+class AnamnesisRequest(BaseModel):
+    sx_ppal: str
+    inicio: str
+    duracion: str
+    curso: str
+    intensidad: str
+    localizacion: str
+    irradiacion: str
+    factores_agravantes: str
+    factores_aliviantes: str
+    antecedentes: str
+    medicamentos: str
+    alergias: str
+    habitos: str
+    red_flags: str
+    symptoms_present: List[str]
 
+class RecommendationRequest(BaseModel):
+    anamnesis: AnamnesisRequest
+    symptoms_present: List[str]  # Lista de síntomas presentes
+
+# Endpoint para predecir probabilidades (mantienes la lógica de predicción de enfermedades)
 @app.post("/predict-probabilities")
 def predict_probabilities(request: SymptomRequest):
-    print(request)
-    # Crear vector binario de 132 features
     x = np.zeros(len(SYMPTOM_ORDER))
 
-    # Activar 1 en los síntomas presentes
     for symptom in request.symptoms:
         if symptom in SYMPTOM_ORDER:
             idx = SYMPTOM_ORDER.index(symptom)
             x[idx] = 1.0
 
-    # Expandir dimensión para batch
     x = np.expand_dims(x, axis=0)
-
-    # Obtener probabilidades
     probs = model.predict_proba(x)[0]
 
-    # Top 3 predicciones
     top_idx = np.argsort(probs)[-3:][::-1]
     top_preds = [
         {"disease": model.classes_[i], "probability": float(probs[i])}
@@ -206,3 +231,51 @@ def predict_probabilities(request: SymptomRequest):
 
     return {"top_predictions": top_preds}
 
+# Endpoint para generar recomendaciones usando Azure OpenAI (GPT-4o-mini)
+@app.post("/generate-recommendation/")
+async def generate_recommendation(data: AnamnesisRequest):
+    try:
+        symptoms_present = data.symptoms_present
+        
+        # Construir el prompt
+        prompt = f"""
+        A continuación se presentan los síntomas, historial médico y diagnóstico de un paciente:
+
+        Síntomas principales: {data.sx_ppal}
+        Inicio: {data.inicio}
+        Duración: {data.duracion}
+        Curso: {data.curso}
+        Intensidad: {data.intensidad}
+        Localización: {data.localizacion}
+        Irradiación: {data.irradiacion}
+        Factores agravantes: {data.factores_agravantes}
+        Factores aliviantes: {data.factores_aliviantes}
+        Antecedentes médicos: {data.antecedentes}
+        Medicamentos: {data.medicamentos}
+        Alergias: {data.alergias}
+        Hábitos: {data.habitos}
+        Red flags: {data.red_flags}
+        Sintomas presentes: {', '.join(symptoms_present)}
+
+        Proporcione un resumen breve y conciso sobre la situación de este paciente, incluyendo únicamente la evaluación general y la conclusión sobre su estado. 
+        No mencione nombres de medicamentos ni dosis específicas. Solo haga un resumen y una conclusión clara y directa.
+        """
+
+        # Llamada a la API de OpenAI (chat completions)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Eres un asistente médico que da recomendaciones breves."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=256,
+            temperature=0.7,
+        )
+
+        recommendation = response.choices[0].message.content.strip()
+
+        return {"recommendation": recommendation}
+
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=str(e))

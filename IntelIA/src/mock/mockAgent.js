@@ -48,15 +48,20 @@ export const simulateAgentResponse = async (userMessage, step) => {
   if (step === "ready-for-model") {
     // ✅ Simulación de lo que devolvería el agente IA con toda la historia clínica y síntomas ya procesados
     const mockStructuredData = {
-      motivo_consulta: "dolor en el pecho",
-      enfermedad_actual: {
-        sintoma_principal: "dolor torácico",
-        inicio: "1 día",
-        caracteristicas: "constante",
-      },
-      antecedentes_personales: ["hipertensión"],
-      antecedentes_familiares: ["infarto en padre"],
-      habitos: { tabaquismo: "no", alcohol: "no" },
+      sx_ppal: "Fiebre alta con tos y dolor de garganta.",
+      inicio: "Inicio repentino, comenzó hace tres días en la noche.",
+      duracion: "Tres días continuos.",
+      curso: "Ha empeorado ligeramente desde el primer día.",
+      intensidad: "7/10",
+      localizacion: "Molestia principal en la garganta y cabeza; malestar general.",
+      irradiacion: "El dolor de garganta no irradia; el dolor de cabeza se siente hacia la frente.",
+      factores_agravantes: "Aire frío y hablar mucho empeoran la garganta; el esfuerzo físico aumenta la tos.",
+      factores_aliviantes: "Líquidos tibios y reposo; paracetamol baja la fiebre temporalmente.",
+      antecedentes: "Sin enfermedades crónicas conocidas; resfriados frecuentes en invierno.",
+      medicamentos: "Paracetamol 500 mg cada 8 horas desde ayer.",
+      alergias: "Niega alergias a medicamentos y alimentos.",
+      habitos: "No fuma; alcohol social ocasional; duerme 6 horas promedio.",
+      red_flags: "Niega dolor torácico intenso, desmayos, sangrado o disnea severa.",
       sintomas_asociados: ['muscle_pain', 'irritability',],
       sintomas_vector: [ ],
     };

@@ -20,6 +20,8 @@ const Report = ({ structuredData }) => {
   const [diagnosisText, setDiagnosisText] = useState("");
   const [loadingDiagnosis, setLoadingDiagnosis] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
+  const [recommendationText, setRecommendationText] = useState("");
+  const [loadingRecommendation, setLoadingRecommendation] = useState(false);
 
   // 🧠 Fetch probabilidades
   useEffect(() => {
@@ -45,31 +47,53 @@ const Report = ({ structuredData }) => {
     fetchProbabilities();
   }, [structuredData]);
 
-  // 🧠 Fetch diagnóstico
+  // 🧠 ⿢ Fetch recomendación generada por GPT-4o-mini
   useEffect(() => {
-    if (!structuredData || !structuredData.sintomas_asociados?.length) return;
-    setLoadingDiagnosis(true);
-    setDiagnosisText("");
-    const fetchDiagnosis = async () => {
+    const fetchRecommendation = async () => {
+      if (!structuredData) return;
+
+      setLoadingRecommendation(true);
+      setRecommendationText("");
+
       try {
-        const prompt = `El paciente presenta los siguientes síntomas: ${structuredData.sintomas_asociados.join(
-          ", "
-        )}. Por favor genera un posible diagnóstico y razonamiento breve.`;
-        const res = await fetch(`${API_URL}/generate-diagnosis`, {
+        const promptData = {
+          sx_ppal: structuredData.sx_ppal,
+          inicio: structuredData.inicio,
+          duracion: structuredData.duracion,
+          curso: structuredData.curso,
+          intensidad: structuredData.intensidad,
+          localizacion: structuredData.localizacion,
+          irradiacion: structuredData.irradiacion,
+          factores_agravantes: structuredData.factores_agravantes,
+          factores_aliviantes: structuredData.factores_aliviantes,
+          antecedentes: structuredData.antecedentes,
+          medicamentos: structuredData.medicamentos,
+          alergias: structuredData.alergias,
+          habitos: structuredData.habitos,
+          red_flags: structuredData.red_flags,
+          symptoms_present: structuredData.sintomas_asociados || [],
+        };
+
+        console.log("Prompt Data:", promptData);
+        const res = await fetch(`${API_URL}/generate-recommendation/ `, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
+          body: JSON.stringify(promptData),
         });
+
         const data = await res.json();
-        setDiagnosisText(data.diagnosis_text || "No se generó diagnóstico.");
+        setRecommendationText(
+          data.recommendation || "No recommendations generated."
+        );
       } catch (error) {
-        console.error("Error generando diagnóstico:", error);
-        setDiagnosisText("Ocurrió un error generando el diagnóstico.");
+        console.error("Error generando recomendación:", error);
+        setRecommendationText("Ocurrió un error generando la recomendación.");
       } finally {
-        setLoadingDiagnosis(false);
+        setLoadingRecommendation(false);
       }
     };
-    fetchDiagnosis();
+
+    fetchRecommendation();
   }, [structuredData]);
 
   // 🌍 Obtener ubicación del usuario
@@ -117,7 +141,7 @@ const Report = ({ structuredData }) => {
       (doc.lastAutoTable?.finalY || 65) + 15
     );
     doc.text(
-      diagnosisText || "No disponible",
+      recommendationText || "No disponible",
       14,
       (doc.lastAutoTable?.finalY || 65) + 22,
       { maxWidth: 180 }
@@ -162,9 +186,11 @@ const Report = ({ structuredData }) => {
 
             {/* Consentimiento / Reflexión */}
             <div className="alert alert-info rounded-4">
-              <strong>ℹ️ Importante:</strong> Las estimaciones y análisis han sido generados por un modelo de IA.
+              <strong>ℹ️ Importante:</strong> Las estimaciones y análisis han
+              sido generados por un modelo de IA.
               <br />
-              Este sistema no sustituye la valoración ni el diagnóstico de un profesional médico. Usa esta información como guía inicial.
+              Este sistema no sustituye la valoración ni el diagnóstico de un
+              profesional médico. Usa esta información como guía inicial.
             </div>
 
             {/* Condiciones */}
@@ -190,7 +216,9 @@ const Report = ({ structuredData }) => {
                   </Col>
                 ))
               ) : (
-                <p className="text-center text-muted">Calculando probabilidades...</p>
+                <p className="text-center text-muted">
+                  Calculando probabilidades...
+                </p>
               )}
             </Row>
 
@@ -200,13 +228,17 @@ const Report = ({ structuredData }) => {
                 Análisis del Modelo Generativo
               </h3>
               <Card className="p-3 bg-light rounded-4 shadow-sm border-0">
-                {loadingDiagnosis ? (
+                {loadingRecommendation ? (
                   <div className="text-center py-3">
-                    <Spinner animation="border" size="sm" /> Generando diagnóstico...
+                    <Spinner animation="border" size="sm" /> Generando
+                    diagnóstico...
                   </div>
                 ) : (
-                  <p className="mb-0 text-secondary" style={{ whiteSpace: "pre-wrap" }}>
-                    {diagnosisText}
+                  <p
+                    className="mb-0 text-secondary"
+                    style={{ whiteSpace: "pre-wrap" }}
+                  >
+                    {recommendationText}
                   </p>
                 )}
               </Card>
@@ -240,7 +272,6 @@ const Report = ({ structuredData }) => {
                 className="d-inline-flex align-items-center gap-2"
                 onClick={handleDownloadPDF}
               >
-              
                 Descargar Reporte en PDF
               </Button>
             </div>
