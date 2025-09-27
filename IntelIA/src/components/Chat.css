@@ -1,0 +1,24 @@
+.chat-container {
+  font-family: 'Inter', sans-serif;
+}
+
+.chat-container header {
+  background-color: #f8f9fa;
+}
+
+.chat-container main {
+  background-color: #f5f6f8;
+}
+
+.chat-container footer {
+  background-color: #ffffff;
+}
+
+.bg-primary {
+  background-color: #13a4ec !important;
+}
+
+.btn-primary {
+  background-color: #13a4ec;
+  border-color: #13a4ec;
+}
