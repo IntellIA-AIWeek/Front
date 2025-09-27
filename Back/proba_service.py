@@ -258,7 +258,8 @@ async def generate_recommendation(data: AnamnesisRequest):
         Sintomas presentes: {', '.join(symptoms_present)}
 
         Proporcione un resumen breve y conciso sobre la situación de este paciente, incluyendo únicamente la evaluación general y la conclusión sobre su estado. 
-        No mencione nombres de medicamentos ni dosis específicas. Solo haga un resumen y una conclusión clara y directa.
+        No mencione nombres de medicamentos ni dosis específicas ni diagnóstico de enfermedad posible. Solo haga un resumen y una conclusión clara y directa que siempre sugiera contactar a un doctor
+        o ir a uno de los centros médicos cercanos.
         """
 
         # Llamada a la API de OpenAI (chat completions)
@@ -279,3 +280,8 @@ async def generate_recommendation(data: AnamnesisRequest):
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
+
+#hello world
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}

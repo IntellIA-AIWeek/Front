@@ -13,7 +13,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./Report.css";
 
-const API_URL = "http://localhost:8000";
+const API_URL = "https://eleven-webs-reply.loca.lt";
 
 const Report = ({ structuredData }) => {
   const [conditions, setConditions] = useState([]);
@@ -30,7 +30,9 @@ const Report = ({ structuredData }) => {
       try {
         const res = await fetch(`${API_URL}/predict-probabilities`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json",
+            "bypass-tunnel-reminder": "157.253.226.99",
+          },
           body: JSON.stringify({ symptoms: structuredData.sintomas_asociados }),
         });
         const data = await res.json();
@@ -77,7 +79,9 @@ const Report = ({ structuredData }) => {
         console.log("Prompt Data:", promptData);
         const res = await fetch(`${API_URL}/generate-recommendation/ `, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json",
+            "bypass-tunnel-reminder": "157.253.226.99",
+          },
           body: JSON.stringify(promptData),
         });
 
