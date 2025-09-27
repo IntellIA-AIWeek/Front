@@ -1,7 +1,9 @@
-import React, { useState } from "react";
-import "./Chat.css";
+import React, { useState, useEffect, useRef } from "react";
+import "bootstrap/dist/css/bootstrap.min.css";
+import { simulateAgentResponse } from "../mock/mockAgent";
+import { FaPaperPlane } from "react-icons/fa";
 
-const Chat = () => {
+const Chat = ({ onFinish }) => {
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -9,98 +11,159 @@ const Chat = () => {
       type: "bot",
       text: "Hello, I'm Dr. Chen. How can I assist you today?",
     },
-    {
-      id: 2,
+  ]);
+  const [input, setInput] = useState("");
+  const [step, setStep] = useState("consent");
+  const [isSending, setIsSending] = useState(false);
+  const messagesRef = useRef(null);
+
+  useEffect(() => {
+    if (messagesRef.current) {
+      messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || isSending) return;
+
+    const userMsg = {
+      id: Date.now() + Math.random(),
       sender: "You",
       type: "user",
-      text: "Hi Dr. Chen, I've been experiencing persistent headaches and fatigue for the past few weeks. It's affecting my daily activities, and I'm concerned about the underlying cause.",
-    },
-    {
-      id: 3,
-      sender: "Dr. Amelia Chen",
-      type: "bot",
-      text: "I understand your concern. Headaches and fatigue can be quite disruptive. To better understand your situation, could you describe the nature of your headaches? Are they throbbing, constant, or localized to a specific area? Also, have you noticed any triggers or patterns, such as time of day or specific activities?",
-    },
-  ]);
+      text,
+    };
 
-  const [input, setInput] = useState("");
-
-  const handleSend = () => {
-    if (!input.trim()) return;
-    setMessages([...messages, { id: Date.now(), sender: "You", type: "user", text: input }]);
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    setIsSending(true);
+
+    try {
+      const response = await simulateAgentResponse(text, step);
+      if (response) {
+        const botMsg = {
+          id: Date.now() + Math.random(),
+          sender: "Dr. Amelia Chen",
+          type: "bot",
+          text: response.text,
+        };
+        setMessages((prev) => [...prev, botMsg]);
+
+        if (response.nextStep) setStep(response.nextStep);
+        if (response.nextStep === "report" && onFinish) {
+          onFinish({
+            structuredData: response.structuredData,
+            prediction: response.prediction,
+          });
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
-    <div className="chat-container d-flex flex-column vh-100 bg-light">
-      {/* Header */}
-      <header className="d-flex align-items-center justify-content-between border-bottom px-3 py-2 bg-white">
-        <div className="d-flex align-items-center gap-2">
-          <div className="logo text-primary">
-            <svg fill="currentColor" viewBox="0 0 48 48" width="32" height="32">
-              <path d="M36.7 44c-2.7 0-5.1-4.2-6.3-10.3-1.2 6.1-3.6 10.3-6.4 10.3s-5.2-4.2-6.3-10.3C16.4 39.8 14 44 11.3 44 7.3 44 4 35 4 24S7.3 4 11.3 4c2.7 0 5.1 4.2 6.3 10.3C18.9 8.2 21.3 4 24 4s5.2 4.2 6.3 10.3C31.6 8.2 34 4 36.7 4 40.7 4 44 13 44 24s-3.3 20-7.3 20z"/>
-            </svg>
-          </div>
-          <h1 className="h5 fw-bold mb-0">HealthAI</h1>
+    <div className="d-flex flex-column bg-light min-vh-100">
+
+      {/* ✅ TOP BAR estilo navbar */}
+      <nav className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom bg-white shadow-sm">
+        <div className="d-flex align-items-center">
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/2950/2950670.png"
+            alt="Logo"
+            style={{ width: 32, height: 32, marginRight: 10 }}
+          />
+          <span className="fw-bold fs-5">HealthAI</span>
         </div>
-        <img
-          alt="User Avatar"
-          className="rounded-circle"
-          style={{ width: "40px", height: "40px", objectFit: "cover" }}
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTpScVCu6kdJmsUZ0rQSWM6I4ZpLgWfgIj3X5PaMUfD2yGjgSK4tGOCYEdNc5-7XgLw4_pAARSc9xdKLCJwaN8IO7qjMmgNGR_nTNY2Uk8hJLOMqHb8UVNz6I14HTmy9tIFT9YbI4AHmCD4aMQ4qur8ePpDGaWiiPSFt_0xHPV1QnDb_NyBhsGFONEE7z67viaF3k3hUF73zpntXAj0iR0c4t7cmVIFaH0XqxsirhzA21cMJWH59LlzkMy5YC9l537laxj6MLa7g"
-        />
+        <div>
+          <img
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTpScVCu6kdJmsUZ0rQSWM6I4ZpLgWfgIj3X5PaMUfD2yGjgSK4tGOCYEdNc5-7XgLw4_pAARSc9xdKLCJwaN8IO7qjMmgNGR_nTNY2Uk8hJLOMqHb8UVNz6I14HTmy9tIFT9YbI4AHmCD4aMQ4qur8ePpDGaWiiPSFt_0xHPV1QnDb_NyBhsGFONEE7z67viaF3k3hUF73zpntXAj0iR0c4t7cmVIFaH0XqxsirhzA21cMJWH59LlzkMy5YC9l537laxj6MLa7g"
+            alt="Profile"
+            className="rounded-circle"
+            style={{ width: 36, height: 36 }}
+          />
+        </div>
+      </nav>
+
+      {/* Header del chat */}
+      <header className="text-center py-3 bg-white border-bottom">
+        <h1 className="fw-bold fs-4 mb-1">Dr. Amelia Chen</h1>
+        <p className="text-muted mb-0">Your AI Medical Assistant</p>
       </header>
 
-      {/* Messages */}
-      <main className="flex-grow-1 overflow-auto p-3">
-        <div className="text-center mb-4">
-          <h2 className="h4 fw-bold">Dr. Amelia Chen</h2>
-          <p className="text-muted">Your AI Medical Assistant</p>
-        </div>
-
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`d-flex mb-3 ${msg.type === "user" ? "justify-content-end" : "justify-content-start"}`}
-          >
-            {msg.type === "bot" && (
-              <img
-                alt="Dr. Chen"
-                className="rounded-circle me-2"
-                style={{ width: "40px", height: "40px", objectFit: "cover" }}
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOPmpmgyClH875IyGCm1Z_aX7r5ebIh7wAkADp1dZKirgQ5eRkWiaHHPWNRv_FZx1pJdxrIVkfDDRyQ8_-mog4x6eTX7pMEyS2umlCpS3qS4YOJDgntEOv6FHTDKflQwHOvJWl3AVkjjVMlLnlA1OKS0vfuBqpmfV1ZQI_yVL6FIAwpLWUOop8ONiUx5as49SfGqdeudnj3r7yWMxXXP56zD6xyJmDYgKCjaN3gusmxHknnc_dzDfJHbc-IIwrSP-lNjPMFDkbww"
-              />
-            )}
-            <div className={`p-3 rounded ${msg.type === "user" ? "bg-primary text-white" : "bg-light border"}`}>
-              <small className="d-block fw-bold mb-1">{msg.sender}</small>
-              <span>{msg.text}</span>
+      {/* ✅ BOX SOLO PARA LOS MENSAJES */}
+      <main
+        className="flex-grow-1 mx-auto my-3 p-3 bg-white rounded-4 shadow-sm overflow-auto"
+        style={{ width: "100%", maxWidth: "800px", height: "400px" }}
+        ref={messagesRef}
+      >
+        {messages.map((msg) => {
+          const isUser = msg.type === "user";
+          return (
+            <div
+              key={msg.id}
+              className={`d-flex mb-3 ${
+                isUser ? "justify-content-end" : "justify-content-start"
+              } fade-in-up`}
+            >
+              {!isUser && (
+                <img
+                  alt="Bot avatar"
+                  className="avatar me-2 rounded-circle"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTpScVCu6kdJmsUZ0rQSWM6I4ZpLgWfgIj3X5PaMUfD2yGjgSK4tGOCYEdNc5-7XgLw4_pAARSc9xdKLCJwaN8IO7qjMmgNGR_nTNY2Uk8hJLOMqHb8UVNz6I14HTmy9tIFT9YbI4AHmCD4aMQ4qur8ePpDGaWiiPSFt_0xHPV1QnDb_NyBhsGFONEE7z67viaF3k3hUF73zpntXAj0iR0c4t7cmVIFaH0XqxsirhzA21cMJWH59LlzkMy5YC9l537laxj6MLa7g"
+                  style={{ width: 40, height: 40 }}
+                />
+              )}
+              <div
+                className={`bubble px-3 py-2 rounded-3 ${
+                  isUser ? "bg-primary text-white" : "bg-light text-dark"
+                }`}
+                style={{ maxWidth: "70%" }}
+              >
+                {!isUser && (
+                  <small className="d-block fw-semibold mb-1">
+                    {msg.sender}
+                  </small>
+                )}
+                {msg.text}
+              </div>
+              {isUser && (
+                <img
+                  alt="User avatar"
+                  className="avatar ms-2 rounded-circle"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnIxjLtC2JyU-hCPswlU9PPi7uxc0Xn_xa2kjUUeQN_q6UjxVpZB3_WvPgBTfUDZKUDzb091XkCHSSEjKO2hqSZ42g6TGPLWUMqVmbZ21E1fNV2Qd1z_VP8HpCB-tgTkBXo2Jkjw5uQP-BPAWXv0d18Fp7ogwwxxQTaYtfMfJu9UrUc2f9UBxVnl_JYIjv7ouhxQpIZLOisQbvRW2N4oDFFMMB-rUjIVDYVRVjomA6OvzmkAZ7wkffdhv5s77E-dYtz2hDmxohBA"
+                  style={{ width: 40, height: 40 }}
+                />
+              )}
             </div>
-            {msg.type === "user" && (
-              <img
-                alt="You"
-                className="rounded-circle ms-2"
-                style={{ width: "40px", height: "40px", objectFit: "cover" }}
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnIxjLtC2JyU-hCPswlU9PPi7uxc0Xn_xa2kjUUeQN_q6UjxVpZB3_WvPgBTfUDZKUDzb091XkCHSSEjKO2hqSZ42g6TGPLWUMqVmbZ21E1fNV2Qd1z_VP8HpCB-tgTkBXo2Jkjw5uQP-BPAWXv0d18Fp7ogwwxxQTaYtfMfJu9UrUc2f9UBxVnl_JYIjv7ouhxQpIZLOisQbvRW2N4oDFFMMB-rUjIVDYVRVjomA6OvzmkAZ7wkffdhv5s77E-dYtz2hDmxohBA"
-              />
-            )}
-          </div>
-        ))}
+          );
+        })}
       </main>
 
-      {/* Input */}
-      <footer className="border-top bg-white p-3">
-        <div className="d-flex gap-2">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Type your message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          />
-          <button onClick={handleSend} className="btn btn-primary">
-            Send
-          </button>
+      {/* Footer con input */}
+      <footer className="border-top py-3 bg-white">
+        <div className="mx-auto w-100 px-3" style={{ maxWidth: "800px" }}>
+          <div className="d-flex align-items-center bg-light rounded-pill px-3 py-2 shadow-sm">
+            <input
+              type="text"
+              className="form-control border-0 bg-transparent"
+              placeholder="Type your message..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              style={{ boxShadow: "none" }}
+            />
+            <button
+              className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center ms-2"
+              style={{ width: 40, height: 40 }}
+              onClick={handleSend}
+              disabled={isSending || !input.trim()}
+            >
+              <FaPaperPlane size={16} />
+            </button>
+          </div>
         </div>
       </footer>
     </div>

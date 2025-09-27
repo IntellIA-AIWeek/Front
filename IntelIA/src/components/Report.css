@@ -1,11 +1,7 @@
-.report-container {
-  font-family: 'Inter', sans-serif;
+.material-symbols-outlined {
+  vertical-align: middle;
 }
 
-.report-container .logo {
-  font-size: 1.25rem;
-}
-
-.progress-bar {
-  transition: width 1s ease-in-out;
+body {
+  background-color: #f6f7f8;
 }

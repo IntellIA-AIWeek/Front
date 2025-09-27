@@ -1,24 +1,67 @@
-.chat-container {
-  font-family: 'Inter', sans-serif;
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
-.chat-container header {
-  background-color: #f8f9fa;
+.chat-root {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: #f6f7f8;
 }
 
-.chat-container main {
-  background-color: #f5f6f8;
+.chat-header {
+  background: #fff;
 }
 
-.chat-container footer {
-  background-color: #ffffff;
+.chat-main {
+  flex: 1;
+  background: #f6f7f8;
 }
 
-.bg-primary {
-  background-color: #13a4ec !important;
+.chat-footer {
+  background: #fff;
 }
 
-.btn-primary {
-  background-color: #13a4ec;
-  border-color: #13a4ec;
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.bubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  max-width: 80%;
+  word-break: break-word;
+}
+
+.bubble.bot {
+  background: #e5e7eb;
+  color: #111827;
+  border-top-left-radius: 0;
+}
+
+.bubble.user {
+  background: #13a4ec;
+  color: white;
+  border-bottom-right-radius: 0;
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.25s ease both;
+}
+
+@keyframes fadeInUp {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
