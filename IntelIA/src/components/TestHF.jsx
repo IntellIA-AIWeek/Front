@@ -1,33 +1,25 @@
 import React, { useState } from "react";
-import { extractSymptoms, predictDiseases } from "../services/hfService";
+import { extractSymptoms } from "../services/symptoService";
 
-const TestHF = () => {
+const TestSympto = () => {
   const [result, setResult] = useState(null);
 
   const handleTest = async () => {
-    const symptoms = await extractSymptoms("Tengo dolor en el pecho y mareo");
-    console.log("Síntomas estructurados:", symptoms);
-
-    // por ahora vector dummy
-    const vector = [1, 0, 0, 1];
-    const prediction = await predictDiseases(vector);
-
-    console.log("Predicción enfermedades:", prediction);
-    setResult({ symptoms, prediction });
+    const res = await extractSymptoms("Tengo dolor de cabeza y mareo");
+    console.log("Resultado SymptoAI:", res);
+    setResult(res);
   };
 
   return (
     <div className="p-3">
-      <button onClick={handleTest} className="btn btn-primary">
-        Probar HuggingFace
+      <button className="btn btn-primary" onClick={handleTest}>
+        Probar SymptoAI
       </button>
       {result && (
-        <pre className="mt-3 text-start">
-          {JSON.stringify(result, null, 2)}
-        </pre>
+        <pre className="mt-3 text-start">{JSON.stringify(result, null, 2)}</pre>
       )}
     </div>
   );
 };
 
-export default TestHF;
+export default TestSympto;
