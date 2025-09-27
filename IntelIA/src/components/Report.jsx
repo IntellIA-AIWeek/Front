@@ -8,6 +8,7 @@ import {
   Button,
   Navbar,
   Nav,
+  Spinner,
 } from "react-bootstrap";
 import "./Report.css";
 
@@ -15,34 +16,69 @@ const API_URL = "http://localhost:8000"; // Ajusta esto a tu backend real
 
 const Report = ({ structuredData }) => {
   const [conditions, setConditions] = useState([]);
+  const [diagnosisText, setDiagnosisText] = useState("");
+  const [loadingDiagnosis, setLoadingDiagnosis] = useState(false);
 
+  // 🧠 1️⃣ Fetch probabilidades
   useEffect(() => {
     const fetchProbabilities = async () => {
-  if (!structuredData) return;
+      if (!structuredData) return;
 
-  try {
-    const res = await fetch(`${API_URL}/predict-probabilities`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ symptoms: structuredData.sintomas_asociados }),
-    });
+      try {
+        const res = await fetch(`${API_URL}/predict-probabilities`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ symptoms: structuredData.sintomas_asociados }),
+        });
 
-    const data = await res.json();
+        const data = await res.json();
 
-    const mapped = data.top_predictions.map((item) => ({
-      icon: "💊",
-      label: item.disease,
-      probability: Math.round(item.probability * 100),
-    }));
+        const mapped = data.top_predictions.map((item) => ({
+          icon: "💊",
+          label: item.disease,
+          probability: Math.round(item.probability * 100),
+        }));
 
-    setConditions(mapped);
-  } catch (error) {
-    console.error("Error obteniendo probabilidades:", error);
-  }
-};
-
+        setConditions(mapped);
+      } catch (error) {
+        console.error("Error obteniendo probabilidades:", error);
+      }
+    };
 
     fetchProbabilities();
+  }, [structuredData]);
+
+  // 🧠 2️⃣ Fetch diagnóstico generado por HuggingFace
+  useEffect(() => {
+    const fetchDiagnosis = async () => {
+      if (!structuredData || !structuredData.sintomas_asociados?.length) return;
+
+      setLoadingDiagnosis(true);
+      setDiagnosisText("");
+
+      try {
+        // Construir prompt automáticamente
+        const prompt = `The patient reports the following symptoms: ${structuredData.sintomas_asociados.join(
+          ", "
+        )}. Provide a brief possible diagnosis and reasoning.`;
+
+        const res = await fetch(`${API_URL}/generate-diagnosis`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+        });
+
+        const data = await res.json();
+        setDiagnosisText(data.diagnosis_text || "No diagnosis generated.");
+      } catch (error) {
+        console.error("Error generando diagnóstico:", error);
+        setDiagnosisText("Ocurrió un error generando el diagnóstico.");
+      } finally {
+        setLoadingDiagnosis(false);
+      }
+    };
+
+    fetchDiagnosis();
   }, [structuredData]);
 
   return (
@@ -121,6 +157,25 @@ const Report = ({ structuredData }) => {
                 </p>
               )}
             </Row>
+
+            {/* 📌 Diagnóstico generado */}
+            <div className="mt-5">
+              <h3 className="h5 fw-bold text-center mb-3">
+                Análisis del Modelo Generativo
+              </h3>
+              <Card className="p-3 bg-light rounded-4 shadow-sm border-0">
+                {loadingDiagnosis ? (
+                  <div className="text-center py-3">
+                    <Spinner animation="border" size="sm" /> Generando
+                    diagnóstico...
+                  </div>
+                ) : (
+                  <p className="mb-0 text-secondary" style={{ whiteSpace: "pre-wrap" }}>
+                    {diagnosisText}
+                  </p>
+                )}
+              </Card>
+            </div>
 
             {/* Mapa */}
             <div className="mt-5">

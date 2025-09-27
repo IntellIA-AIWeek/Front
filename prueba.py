@@ -1,23 +1,60 @@
-import numpy as np
-import joblib
-from huggingface_hub import hf_hub_download
+# rprueba.py
+from transformers import AutoTokenizer, AutoModelForCausalLM, TextStreamer
+import torch
 
-# Cargar el modelo
-model = joblib.load(
-    hf_hub_download("AWeirdDev/human-disease-prediction", "sklearn_model.joblib")
-)
+def main():
+    model_name = "alpha-ai/Medical-Diagnosis-COT-Gemma3-270M"
 
-# Generar un array aleatorio (1,132)
-x = np.random.rand(132)
-x = np.expand_dims(x, axis=0)
+    print("⏳ Cargando tokenizer y modelo...")
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        device_map="auto",
+        torch_dtype=torch.float32
+    )
+    print("✅ Modelo cargado correctamente.\n")
 
-# Obtener probabilidades
-probs = model.predict_proba(x)[0]  # [0] porque es un solo ejemplo
+    # 📝 Mensaje de prueba (puedes cambiarlo)
+    messages = [
+        {"role": "user", "content": "I have a headache and a fever. What could be the diagnosis?"}
+    ]
 
-# Obtener los índices de las top 5 probabilidades
-top5_idx = np.argsort(probs)[-5:][::-1]  # orden descendente
+    # ✍️ Convertimos el chat en tokens
+    inputs = tokenizer.apply_chat_template(
+        messages,
+        add_generation_prompt=True,
+        tokenize=True,
+        return_dict=True,
+        return_tensors="pt",
+    ).to(model.device)
 
-# Mostrar Top-5 clases con sus probabilidades
-print("Top 5 predictions:")
-for i in top5_idx:
-    print(f"Clase {model.classes_[i]}: {probs[i]:.4f}")
+    # 🪄 Mostrar el prompt real que se envía al modelo
+    print("=== 📜 PROMPT REAL ENVIADO AL MODELO ===")
+    print(tokenizer.decode(inputs["input_ids"][0]))
+    print("========================================\n")
+
+    # 🧠 Streamer para ver la generación token por token
+    streamer = TextStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
+
+    print("🤖 Generando respuesta paso a paso...\n")
+    outputs = model.generate(
+        **inputs,
+        max_new_tokens=150,
+        temperature=0.4,   # 🔥 más bajo = más coherente
+        top_p=0.9,
+        streamer=streamer
+    )
+
+    # 📝 Decodificar la respuesta final
+    generated_text = tokenizer.decode(
+        outputs[0][inputs["input_ids"].shape[-1]:],
+        skip_special_tokens=True
+    )
+
+    print("\n=== ✅ RESPUESTA FINAL DEL MODELO ===")
+    print(generated_text)
+    print("=====================================")
+
+
+if __name__ == "__main__":
+    main()

@@ -5,6 +5,14 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware
+from transformers import pipeline
+
+# Cargar el pipeline una sola vez (para que no se demore en cada request)
+diagnosis_pipe = pipeline(
+    "text-generation", 
+    model="alpha-ai/Medical-Diagnosis-COT-Gemma3-270M"
+)
+
 
 # Lista de síntomas en orden exacto
 SYMPTOM_ORDER = ['itching',
@@ -167,6 +175,10 @@ app.add_middleware(
 class SymptomRequest(BaseModel):
     symptoms: List[str]
 
+class DiagnosisRequest(BaseModel):
+    prompt: str
+ 
+
 @app.post("/predict-probabilities")
 def predict_probabilities(request: SymptomRequest):
     print(request)
@@ -193,3 +205,4 @@ def predict_probabilities(request: SymptomRequest):
     ]
 
     return {"top_predictions": top_preds}
+
